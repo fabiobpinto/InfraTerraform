@@ -5,7 +5,12 @@ resource "azurerm_managed_redis" "mng_redis" {
   sku_name            = var.redis_sku
 
   default_database {
-    geo_replication_group_name = "myGeoGroup"
+#    geo_replication_group_name = "myGeoGroup"
+  }
+  timeouts {
+    create = "60m"
+    delete = "60m"
+    update = "60m"
   }
 }
 
