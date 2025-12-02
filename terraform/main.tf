@@ -13,35 +13,59 @@ module "rg" {
   location = var.location
 }
 
-# module "key_vault" {
-#   source         = "./modules/key_vault"
-#   rg_name        = var.rg_name
-#   location       = var.location
-#   key_vault_name = var.key_vault_name
-# }
+data "azurerm_private_dns_zone" "example" {
+  name                = "privatelink.blob.core.windows.net"
+  resource_group_name = var.rg_name
+}
 
-# module "redis" {
-#   source                      = "./modules/redis"
-#   rg_name                     = module.rg.rg_name
-#   location                    = module.rg.rg_location
-#   redis_name                  = var.mgmt_redis.mgm-redis-01.redis_name
-#   redis_sku                   = var.mgmt_redis.mgm-redis-01.redis_sku
-#   subnet_redis                = var.subnet_redis
-#   vnet_name_redis             = var.vnet_name_redis
-#   redis_private_endpoint_name = var.mgmt_redis.mgm-redis-01.redis_private_endpoint_name
-#   redis_private_ip_address    = var.mgmt_redis.mgm-redis-01.redis_private_ip_address
-# }
+output "private_dns_zone_id" {
+  value = data.azurerm_private_dns_zone.example.id
+}
 
 
-module "redis" {
-  source                      = "./modules/redis"
-  for_each                    = var.mgmt_redis
-  rg_name                     = module.rg.rg_name
-  location                    = module.rg.rg_location
-  redis_name                  = each.value.redis_name
-  redis_sku                   = each.value.redis_sku
-  subnet_redis                = var.subnet_redis
-  vnet_name_redis             = var.vnet_name_redis
-  redis_private_endpoint_name = each.value.redis_private_endpoint_name
-  redis_private_ip_address    = each.value.redis_private_ip_address
+#################
+resource "azurerm_resource_group" "example" {
+  name     = "example-rg"
+  location = "West Europe"
+}
+
+resource "azurerm_storage_account" "example" {
+  name                     = "gsgsgssstorageacct"
+  resource_group_name      = azurerm_resource_group.example.name
+  location                 = azurerm_resource_group.example.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+resource "azurerm_virtual_network" "example" {
+  name                = "virtnetname"
+  address_space       = ["10.0.0.0/16"]
+  location            = azurerm_resource_group.example.location
+  resource_group_name = azurerm_resource_group.example.name
+}
+
+resource "azurerm_subnet" "example" {
+  name                 = "subnetname"
+  resource_group_name  = azurerm_resource_group.example.name
+  virtual_network_name = azurerm_virtual_network.example.name
+  address_prefixes     = ["10.0.2.0/24"]
+}
+
+resource "azurerm_private_endpoint" "example" {
+  name                = "example-endpoint"
+  location            = azurerm_resource_group.example.location
+  resource_group_name = azurerm_resource_group.example.name
+  subnet_id           = azurerm_subnet.example.id
+
+  private_service_connection {
+    name                           = "example-privateserviceconnection"
+    private_connection_resource_id = azurerm_storage_account.example.id
+    subresource_names              = ["blob"]
+    is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "example-dns-zone-group"
+    private_dns_zone_ids = [data.azurerm_private_dns_zone.example.id]
+  }
 }
