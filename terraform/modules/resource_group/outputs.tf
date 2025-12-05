@@ -2,7 +2,7 @@ output "rg_name" {
   value       = azurerm_resource_group.rg_main.name
   description = "The name of the resource group."
 }
-output "rg_location" {
+output "location" {
   value       = azurerm_resource_group.rg_main.location
   description = "The location of the resource group."
 }
